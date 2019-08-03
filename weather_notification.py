@@ -1,5 +1,7 @@
 import requests
 import json
+import schedule
+from twilio.rest import Client
 
 def get_weather(weather_apikey, latitude, longitude, unit):
     # weather_info is a dictionary that stores weather summary, highest temperature, and lowest temperature
@@ -27,15 +29,35 @@ def get_weather(weather_apikey, latitude, longitude, unit):
     # temperatures is a list that stores all temperatures throughout the day; used to find max/min temperature
     temperatures = []
 
+    # Find the max/min temperature for the day
     for tempdata in data['hourly']['data']:
-        temperatures.append(data['hourly']['data']['temperature'])
+        temperatures.append(tempdata['temperature'])
 
     max_temperature = max(temperatures)
     min_temperature = min(temperatures)
 
-    weather_info['max'] = max_temperature
-    weather_info['min'] = min_temperature
+    weather_info['max'] = str(max_temperature)
+    weather_info['min'] = str(min_temperature)
     return weather_info
+
+def send_text(twilio_accountsid, twilio_authtoken, twilio_phone, user_phone, weather_info, unit):
+    client = Client(twilio_accountsid, twilio_authtoken)
+
+    # Message to send to phone
+    weather_text = ""
+    if unit == "Fahrenheit":
+        weather_text = weather_info['summary'] + " High: " + weather_info['max'] + "°F. Low: " + weather_info['min'] + "°F."
+    elif unit == "Celsius":
+        weather_text = weather_info['summary'] + " High: " + weather_info['max'] + "°C. Low: " + weather_info['min'] + "°C."
+
+    message = client.messages.create(
+        body=weather_text,
+        from_=twilio_phone,
+        to=user_phone
+    )
+
+    message.sid
+
 
 def read_config():
     # config_information_map is a dictionary that stores all values within the config file
@@ -46,6 +68,9 @@ def read_config():
         data = json.load(config_file)
     config_information_map['weather_apikey'] = data['weather_apikey']
     config_information_map['google_apikey'] = data['google_apikey']
+    config_information_map['twilio_accountsid'] = data['twilio_accountsid']
+    config_information_map['twilio_authtoken'] = data['twilio_authtoken']
+    config_information_map['twilio_phone'] = data['twilio_phone']
     return config_information_map
 
 def get_latitude_longitude(google_apikey, address):
@@ -55,7 +80,7 @@ def get_latitude_longitude(google_apikey, address):
     # Google's Geocoding API endpoint
     geocoding_endpoint = 'https://maps.googleapis.com/maps/api/geocode/json'
 
-    # Google's Geocoding API requires the address and API key parameters
+    # Google's Geocoding API requires two parameters: address and API key
     payload = {
         'address': address,
         'key': google_apikey
@@ -63,10 +88,10 @@ def get_latitude_longitude(google_apikey, address):
 
     response = requests.get(geocoding_endpoint, params=payload)
     data = json.loads(response.text)
-    print(data)
 
-    latitude_longitude['latitude'] = data['results'][0]['geometry']['location']['lat']
-    latitude_longitude['longitude'] = data['results'][0]['geometry']['location']['lng']
+    latitude_longitude['latitude'] = str(data['results'][0]['geometry']['location']['lat'])
+    latitude_longitude['longitude'] = str(data['results'][0]['geometry']['location']['lng'])
+    return latitude_longitude
 
 def get_user_info():
     # user_info is a dictionary that stores the user's address and phone number
@@ -78,9 +103,13 @@ def get_user_info():
     address_input = input("\t> ")
     user_info['address'] = address_input
     print("Enter the phone number you wish to receive daily notifications from.")
-    print("Please use the following format: (123) 345-5678")
+    print("Please use the following format: +15558675310")
     phone_input = input("\t> ")
     user_info['phone'] = phone_input
+    print("Enter the time of day you would like to receive the daily weather notification.")
+    print("Please use the military time format (e.g. enter \"13:00\" for 1pm).")
+    time_input = input("\t> ")
+    user_info['time'] = time_input
     print("The default unit is Fahrenheit. Would you like to switch to Celsius? (y/n)")
     unit_input = input("\t> ")
     while unit_input.lower() != "y" and unit_input.lower() != "n":
@@ -93,7 +122,6 @@ def get_user_info():
 
     return user_info
 
-
 def main():
     print("Daily Weather Notification by Tran Ngo")
     print("Powered by Dark Sky (https://darksky.net/poweredby)")
@@ -105,13 +133,30 @@ def main():
     # Assign the values of the config file to variables for use
     weather_apikey = config_information_map['weather_apikey']
     google_apikey = config_information_map['google_apikey']
+    twilio_accountsid = config_information_map['twilio_accountsid']
+    twilio_authtoken = config_information_map['twilio_authtoken']
+    twilio_phone = config_information_map['twilio_phone']
 
-    # Ask for user's country and postal code
+    # Ask for user's address and unit preference
     user_info = get_user_info()
 
+    # Get user's latitude and longitude based on the specified address
     latitude_longitude = get_latitude_longitude(google_apikey, user_info['address'])
 
+    weather_info = get_weather(weather_apikey, latitude_longitude['latitude'], latitude_longitude['longitude'], user_info['unit'])
 
+    send_text(twilio_accountsid, twilio_authtoken, twilio_phone, user_info['phone'], weather_info, user_info['unit'])
+
+    # def job():
+    #     # Get the weather info
+    #     weather_info = get_weather(weather_apikey, latitude_longitude['latitude'], latitude_longitude['longitude'], user_info['unit'])
+    #
+    # # Get updated weather information and send text messages every day at specified time
+    # schedule.every().day.at(user_info['time']).do(job)
+    #
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(1)
 
 main()
 
