@@ -143,20 +143,19 @@ def main():
     # Get user's latitude and longitude based on the specified address
     latitude_longitude = get_latitude_longitude(google_apikey, user_info['address'])
 
-    weather_info = get_weather(weather_apikey, latitude_longitude['latitude'], latitude_longitude['longitude'], user_info['unit'])
+    def job():
+        # Get the weather info
+        weather_info = get_weather(weather_apikey, latitude_longitude['latitude'], latitude_longitude['longitude'], user_info['unit'])
 
-    send_text(twilio_accountsid, twilio_authtoken, twilio_phone, user_info['phone'], weather_info, user_info['unit'])
+        # Send weather text message
+        send_text(twilio_accountsid, twilio_authtoken, twilio_phone, user_info['phone'], weather_info, user_info['unit'])
 
-    # def job():
-    #     # Get the weather info
-    #     weather_info = get_weather(weather_apikey, latitude_longitude['latitude'], latitude_longitude['longitude'], user_info['unit'])
-    #
-    # # Get updated weather information and send text messages every day at specified time
-    # schedule.every().day.at(user_info['time']).do(job)
-    #
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(1)
+    # Get updated weather information and send text messages every day at specified time
+    schedule.every().day.at(user_info['time']).do(job)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 main()
 
