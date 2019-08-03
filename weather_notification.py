@@ -1,16 +1,19 @@
 import requests
 import json
 
-def get_weather(postalcode, countrycode):
-    # Weather API endpoint (https://openweathermap.org)
-    weather_endpoint = 'api.openweathermap.org/data/2.5/weather'
+def get_weather(weather_apikey, latitude, longitude):
+    # Weather API endpoint (https://darksky.net)
+    weather_endpoint = 'https://api.darksky.net/forecast/' + weather_apikey + "/" + latitude + "," + longitude
 
-    # Parameter(s) needed to make the API call
+    # Optional parameters
     payload = {
-        # 'zip' = postalcode
+        'exclude=currently,minutely,daily'
     }
 
-    response = requests.get(url)
+    response = requests.get(weather_endpoint, params=payload)
+    data = json.loads(response.text)
+
+
 
 def read_config():
     # config_information_map is a dictionary that stores all values within the config file
@@ -20,167 +23,64 @@ def read_config():
     with open('config.json') as config_file:
         data = json.load(config_file)
     config_information_map['weather_apikey'] = data['weather_apikey']
+    config_information_map['google_apikey'] = data['google_apikey']
     return config_information_map
 
-def print_welcome_text():
-    # user_info is a dictionary that stores the user's country code and postal code
-    user_info = { }
+def get_latitude_longitude(google_apikey, address):
+    # latitude_longitude is a dictionary that stores the user's latitude and longitude
+    latitude_longitude = { }
 
-    # country_code_map is a dictionary that stores countries with their
-    # corresponding 2 character ISO 3166 code
-    country_code_map = {
-        'Afghanistan': 'AF',
-        'Algeria': 'DZ',
-        'Argentina': 'AR',
-        'Armenia': 'AM',
-        'Australia': 'AU',
-        'Austria': 'AT',
-        'Bahamas': 'BS',
-        'Bangladesh': 'BD',
-        'Barbados': 'BB',
-        'Belgium': 'BE',
-        'Belize': 'BZ',
-        'Bhutan': 'BT',
-        'Bolivia': 'BO',
-        'Bosnia and Herzegovina': 'BA',
-        'Botswana': 'BW',
-        'Brazil': 'BR',
-        'Bulgaria': 'BG',
-        'Cambodia': 'KH',
-        'Cameroon': 'CM',
-        'Canada': 'CA',
-        'Chad': 'TD',
-        'Chile': 'CL',
-        'China': 'CN',
-        'Colombia': 'CO',
-        'Congo': 'CG',
-        'Costa Rica': 'CR',
-        'Croatia': 'HR',
-        'Cuba': 'CU',
-        'Czech Republic': 'CZ',
-        'Denmark': 'DK',
-        'Dominican Republic': 'DO',
-        'Ecuador': 'EC',
-        'Egypt': 'EG',
-        'El Salvador': 'SV',
-        'Estonia': 'EE',
-        'Ethiopia': 'ET',
-        'Finland': 'FI',
-        'France': 'FR',
-        'Germany': 'DE',
-        'Ghana': 'GH',
-        'Greece': 'GR',
-        'Greenland': 'GL',
-        'Guadeloupe': 'GP',
-        'Guatemala': 'GT',
-        'Guinea': 'GN',
-        'Haiti': 'HT',
-        'Honduras': 'HN',
-        'Hong Kong': 'HK',
-        'Hungary': 'HU',
-        'Iceland': 'IS',
-        'India': 'IN',
-        'Indonesia': 'ID',
-        'Iraq': 'IQ',
-        'Ireland': 'IE',
-        'Israel': 'IL',
-        'Italy': 'IT',
-        'Jamaica': 'JM',
-        'Japan': 'JP',
-        'Jordan': 'JO',
-        'Kenya': 'KE',
-        'Kuwait': 'KW',
-        'Latvia': 'LV',
-        'Lebanon': 'LB',
-        'Liberia': 'LR',
-        'Libya': 'LY',
-        'Lithuania': 'LT',
-        'Luxembourg': 'LU',
-        'Macao': 'MO',
-        'Madagascar': 'MG',
-        'Malaysia': 'MY',
-        'Mexico': 'MX',
-        'Mongolia': 'MN',
-        'Morocco': 'MA',
-        'Myanmar': 'MM',
-        'Nepal': 'NP',
-        'Netherlands': 'NL',
-        'New Zealand': 'NZ',
-        'Nicaragua': 'NI',
-        'Niger': 'NE',
-        'Nigeria': 'NG',
-        'Norway': 'NO',
-        'Pakistan': 'PK',
-        'Panama': 'PA',
-        'Papua New Guinea': 'PG',
-        'Paraguay': 'PY',
-        'Peru': 'PE',
-        'Philippines': 'PH',
-        'Poland': 'PL',
-        'Portugal': 'PT',
-        'Puerto Rico': 'PR',
-        'Romania': 'RO',
-        'Russian Federation': 'RU',
-        'Saudi Arabia': 'SA',
-        'Serbia': 'RS',
-        'Sierra Leone': 'SL',
-        'Singapore': 'SG',
-        'Slovakia': 'SK',
-        'Slovenia': 'SI',
-        'Somalia': 'SO',
-        'South Africa': 'ZA',
-        'South Korea': 'KR',
-        'South Sudan': 'SS',
-        'Spain': 'ES',
-        'Sri Lanka': 'LK',
-        'Sudan': 'SD',
-        'Sweden': 'SE',
-        'Switzerland': 'CH',
-        'Taiwan': 'TW',
-        'Thailand': 'TH',
-        'Turkey': 'TR',
-        'Uganda': 'UG',
-        'Ukraine': 'UA',
-        'United Kingdom': 'GB',
-        'United States': 'US',
-        'Uruguay': 'UY',
-        'Uzbekistan': 'UZ',
-        'Venezuela': 'VE',
-        'Vietnam': 'VN',
-        'Yemen': 'YE',
-        'Zambia': 'ZM',
-        'Zimbabwe': 'ZW'
+    # Google's Geocoding API endpoint
+    geocoding_endpoint = 'https://maps.googleapis.com/maps/api/geocode/json'
+
+    # Google's Geocoding API requires the address and API key parameters
+    payload = {
+        'address': address,
+        'key': google_apikey
     }
 
-    # Putting the keys of the country_code_map dictionary into a list
-    country_list = list(country_code_map.keys())
+    response = requests.get(geocoding_endpoint, params=payload)
+    data = json.loads(response.text)
+    print(data)
 
-    print("Daily Weather Notification by Tran Ngo")
-    print("-----------------------------------------------")
+    latitude_longitude['latitude'] = data['results'][0]['geometry']['location']['lat']
+    latitude_longitude['longitude'] = data['results'][0]['geometry']['location']['lng']
+
+def get_user_info():
+    # user_info is a dictionary that stores the user's address and phone number
+    user_info = { }
+
     # Ask for user's country and store the associated country code
-    country_input = input("Please enter your country (to see a list of supported countries, type \"help\"): ")
-    while country_input not in country_list and country_input != "help":
-        print("Invalid input.")
-        country_input = input("Please enter your country (to see a list of supported countries, type \"help\"): ")
-    if country_input == "help":
-        print("")
-        for country in country_list:
-            print(country)
-    else:
-        user_info['countrycode'] = country_code_map[country_input]
-    # Ask for user's postal code and store it
-    postalcode_input = input("Please enter your postal code: ")
-    user_info['postalcode'] = postalcode_input
+    print("To get the most accurate temperature readings, enter your address.")
+    print("Please use the following format: 123 Example St, Los Angeles, CA 90089")
+    address_input = input("\t> ")
+    user_info['address'] = address_input
+    print("Enter the phone number you wish to receive daily notifications from.")
+    print("Please use the following format: (123) 345-5678")
+    phone_input = input("\t> ")
+    user_info['phone'] = phone_input
+
     return user_info
 
 
 def main():
+    print("Daily Weather Notification by Tran Ngo")
+    print("Powered by Dark Sky (https://darksky.net/poweredby)")
+    print("---------------------------------------------------")
+
     # Read the config file and store it into a dictionary
     config_information_map = read_config()
 
     # Assign the values of the config file to variables for use
     weather_apikey = config_information_map['weather_apikey']
-    print_welcome_text()
+    google_apikey = config_information_map['google_apikey']
+
+    # Ask for user's country and postal code
+    user_info = get_user_info()
+
+    latitude_longitude = get_latitude_longitude(google_apikey, user_info['address'])
+
+
 
 main()
 
