@@ -1,0 +1,7 @@
+{
+	"weather_apikey": "123456789",
+	"google_apikey": "123456789",
+	"twilio_accountsid": "123456789",
+	"twilio_authtoken": "123456789",
+	"twilio_phone": "Weather Bot"
+}
